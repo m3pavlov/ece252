@@ -6,7 +6,7 @@ CC = gcc       # compiler
 CFLAGS = -Wall -g  -std=gnu99# compilation flg 
 LD = gcc       # linker
 LDFLAGS = -g   # debugging symbols in build
-LDLIBS =       # link with libz
+LDLIBS = -lcurl      # link with libz
 
 # For students 
 SRCS   = paster2.c
@@ -16,7 +16,7 @@ TARGETS= paster2
 
 all: ${TARGETS}
 
-paster2: $(OBJS1) 
+paster2: $(OBJS1) cURL.o
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
@@ -29,4 +29,4 @@ paster2: $(OBJS1)
 
 .PHONY: clean
 clean:
-	rm -f *.d *.o *~ $(TARGETS) 
+	rm -f *.d *.o *~ $(TARGETS) *.png

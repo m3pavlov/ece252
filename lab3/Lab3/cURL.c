@@ -26,7 +26,6 @@
 
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -35,55 +34,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <semaphore.h>
-
-#define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
-#define DUM_URL "https://example.com/"
-#define ECE252_HEADER "X-Ece252-Fragment: "
-#define BUF_SIZE 10240 /* 1024*10 = 10K */
-
-/* This is a flattened structure, buf points to 
-   the memory address immediately after 
-   the last member field (i.e. seq) in the structure.
-   Here is the memory layout. 
-   Note that the memory is a chunk of continuous bytes.
-
-   On a 64-bit machine, the memory layout is as follows:
-
-   +================+
-   | buf            | 8 bytes
-   +----------------+
-   | size           | 8 bytes
-   +----------------+
-   | max_size       | 8 bytes
-   +----------------+
-   | seq            | 4 bytes
-   +----------------+
-   | padding        | 4 bytes
-   +----------------+
-   | buf[0]         | 1 byte
-   +----------------+
-   | buf[1]         | 1 byte
-   +----------------+
-   | ...            | 1 byte
-   +----------------+
-   | buf[max_size-1]| 1 byte
-   +================+
-*/
-typedef struct recv_buf_flat {
-    char *buf;       /* memory to hold a copy of received data */
-    size_t size;     /* size of valid data in buf in bytes*/
-    size_t max_size; /* max capacity of buf in bytes*/
-    int seq;         /* >=0 sequence number extracted from http header */
-                     /* <0 indicates an invalid seq number */
-} RECV_BUF;
-
-size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
-size_t write_cb_curl(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
-int recv_buf_init(RECV_BUF *ptr, size_t max_size);
-int recv_buf_cleanup(RECV_BUF *ptr);
-int write_file(const char *path, const void *in, size_t len);
-
-
+#include "cURL.h"
 /**
  * @brief  cURL header call back function to extract image sequence number from 
  *         http header data. An example header for image part n (assume n = 2) is:
@@ -174,41 +125,6 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 }
 
 
-/**
- * @brief output data in memory to a file
- * @param path const char *, output file path
- * @param in  void *, input data to be written to the file
- * @param len size_t, length of the input data in bytes
- */
-
-int write_file(const char *path, const void *in, size_t len)
-{
-    FILE *fp = NULL;
-
-    if (path == NULL) {
-        fprintf(stderr, "write_file: file name is null!\n");
-        return -1;
-    }
-
-    if (in == NULL) {
-        fprintf(stderr, "write_file: input data is null!\n");
-        return -1;
-    }
-
-    fp = fopen(path, "wb");
-    if (fp == NULL) {
-        perror("fopen");
-        return -2;
-    }
-
-    if (fwrite(in, 1, len, fp) != len) {
-        fprintf(stderr, "write_file: imcomplete write!\n");
-        return -3; 
-    }
-    return fclose(fp);
-}
-
-
 int main( int argc, char** argv ) 
 {
     CURL *curl_handle;
@@ -236,8 +152,6 @@ int main( int argc, char** argv )
         strcpy(url, argv[1]);
     }
     printf("%s: URL is %s\n", argv[0], url);
-
-    curl_global_init(CURL_GLOBAL_DEFAULT);
 
     /* init a curl session */
     curl_handle = curl_easy_init();
@@ -276,11 +190,9 @@ int main( int argc, char** argv )
     }
 
     sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
-    write_file(fname, p_shm_recv_buf->buf, p_shm_recv_buf->size);
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
-    curl_global_cleanup();
     shmdt(p_shm_recv_buf);
     shmctl(shmid, IPC_RMID, NULL);
     return 0;
