@@ -56,6 +56,14 @@ int shmid;
 
 int main( int argc, char** argv )
 {
+    // int buffer_size = atoi(argv[1]);
+    // int n_consumers = atoi(argv[2]);
+    // int n_producers = atoi(argv[3]);
+    // int ms_consumer_sleeps = atoi(argv[4]);
+    // int n_image = atoi(argv[5]);
+
+    // printf("%u, %u, %u, %u, %u \n", buffer_size, n_consumers, n_producers, ms_consumer_sleeps, n_image);
+
 
     int n_consumer = 1;
     int n_producer = 1;
