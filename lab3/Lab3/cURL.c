@@ -125,7 +125,7 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 }
 
 
-int main( int argc, char** argv ) 
+int get_cURL( int argc, char** argv ) 
 {
     CURL *curl_handle;
     CURLcode res;

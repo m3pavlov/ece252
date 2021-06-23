@@ -29,6 +29,7 @@
 
 int worker(int n);
 void producer();
+void consumer();
 
 typedef struct recv_buf_flat {
     char *buf;       /* memory to hold a copy of received data */
@@ -76,33 +77,7 @@ int main( int argc, char** argv )
     }
     times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
     
-    char url[256];
-    RECV_BUF *p_shm_recv_buf;
-    int shm_size = sizeof_shm_recv_buf(buf_size);
-    char fname[256];
-    pid_t pid =getpid();
-    pid_t cpid = 0;
-    
-    printf("shm_size = %d.\n", shm_size);
-    shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    if ( shmid == -1 ) {
-        perror("shmget");
-        abort();
-    }
-
-    p_shm_recv_buf = shmat(shmid, NULL, 0);
-    shm_recv_buf_init(p_shm_recv_buf, buf_size);
-
-
-    if (argc == 1) {
-        strcpy(url, IMG_URL); 
-    } else {
-        strcpy(url, argv[1]);
-    }
-    printf("%s: URL is %s\n", argv[0], url);
-
     curl_global_init(CURL_GLOBAL_DEFAULT);
-
 
     for ( i = 0; i < num_child; i++) {
         
@@ -114,31 +89,31 @@ int main( int argc, char** argv )
         } else if ( pid == 0 ) { /* child proc */
 
             if (i < n_producer)
-                producer(i);
+                producer();
             else
-                consumer(i);
+                consumer();
 
             break;
-        } else {                /* parent proc */
-            wait(NULL);
-            cpids[i] = pid;
-            for ( i = 0; i < num_child; i++ ) {
-                waitpid(cpids[i], &state, 0);
-                if (WIFEXITED(state)) {
-                    printf("Child cpid[%d]=%d terminated with state: %d.\n", i, cpids[i], state);
-                } 
-            }
-            if (gettimeofday(&tv, NULL) != 0) {
-                perror("gettimeofday");
-                abort();
-            }
-            times[1] = (tv.tv_sec) + tv.tv_usec/1000000.;
-            printf("Parent pid = %d: total execution time is %.6lf seconds\n", getpid(),  times[1] - times[0]);
-
         }
-        
     }
 
+    if (pid > 0) {      /* parent proc */
+
+        while (wait(NULL) != -1);
+        cpids[i] = pid;
+        for ( i = 0; i < num_child; i++ ) {
+            waitpid(cpids[i], &state, 0);
+            if (WIFEXITED(state)) {
+                printf("Child cpid[%d]=%d terminated with state: %d.\n", i, cpids[i], state);
+            } 
+        }
+        if (gettimeofday(&tv, NULL) != 0) {
+            perror("gettimeofday");
+            abort();
+        }
+        times[1] = (tv.tv_sec) + tv.tv_usec/1000000.;
+        printf("Parent pid = %d: total execution time is %.6lf seconds\n", getpid(),  times[1] - times[0]);
+    }
 
     sem_destroy(&sem);
     curl_global_cleanup();
@@ -147,5 +122,10 @@ int main( int argc, char** argv )
 
 
 void producer() {
+    printf("in producer\n");
+}
 
+
+void consumer() {
+    printf("in consumer\n");
 }

@@ -6,13 +6,12 @@ CC = gcc       # compiler
 CFLAGS = -Wall -g  -std=gnu99# compilation flg 
 LD = gcc       # linker
 LDFLAGS = -g   # debugging symbols in build
-LDLIBS = -lcurl      # link with libz
+LDLIBS = -lcurl -pthread   # link with libz
 
 # For students 
-SRCS   = paster2.c
-OBJS1   = paster2.o $(LIB_UTIL) 
-
-TARGETS= paster2
+SRCS = paster2.c
+OBJS1 = paster2.o $(LIB_UTIL)
+TARGETS = paster2
 
 all: ${TARGETS}
 
