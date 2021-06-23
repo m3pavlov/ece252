@@ -21,8 +21,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define NUM_CHILD 5
-
 int worker(int n);
 
 /**
@@ -38,9 +36,15 @@ int worker(int n)
 
 int main()
 {
+
+    int n_consumer = 5;
+    int n_producer = 5;
+
+    int num_child = n_consumer + n_producer;
+
     int i=0;
     pid_t pid=0;
-    pid_t cpids[NUM_CHILD];
+    pid_t cpids[num_child];
     int state;
     double times[2];
     struct timeval tv;
@@ -51,14 +55,20 @@ int main()
     }
     times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
     
-    for ( i = 0; i < NUM_CHILD; i++) {
+    for ( i = 0; i < num_child; i++) {
         
         pid = fork();
 
         if ( pid > 0 ) {        /* parent proc */
             cpids[i] = pid;
         } else if ( pid == 0 ) { /* child proc */
-            worker(i);
+
+            if (i < n_producer)
+                producer(i);
+            else
+                consumer(i);
+
+
             break;
         } else {
             perror("fork");
@@ -68,7 +78,7 @@ int main()
     }
 
     if ( pid > 0 ) {            /* parent process */
-        for ( i = 0; i < NUM_CHILD; i++ ) {
+        for ( i = 0; i < num_child; i++ ) {
             waitpid(cpids[i], &state, 0);
             if (WIFEXITED(state)) {
                 printf("Child cpid[%d]=%d terminated with state: %d.\n", i, cpids[i], state);

@@ -9,19 +9,14 @@ LDFLAGS = -g   # debugging symbols in build
 LDLIBS =       # link with libz
 
 # For students 
-LIB_UTIL = 
-SRCS   = forkN.c zombie.c
-OBJS1   = forkN.o $(LIB_UTIL) 
-OBJS2   = zombie.o $(LIB_UTIL) 
+SRCS   = paster2.c
+OBJS1   = paster2.o $(LIB_UTIL) 
 
-TARGETS= forkN.out zombie.out 
+TARGETS= paster2
 
 all: ${TARGETS}
 
-forkN.out: $(OBJS1) 
-	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
-
-zombie.out: $(OBJS2) 
+paster2: $(OBJS1) 
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
