@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
-#define IMG_URL_1 "http://ece252-1.uwaterloo.ca:2520/image?img="
-#define IMG_URL_2 "http://ece252-2.uwaterloo.ca:2520/image?img="
-#define IMG_URL_3 "http://ece252-3.uwaterloo.ca:2520/image?img="
+#define IMG_URL_1 "http://ece252-1.uwaterloo.ca:2530/image?img="
+#define IMG_URL_2 "http://ece252-2.uwaterloo.ca:2530/image?img="
+#define IMG_URL_3 "http://ece252-3.uwaterloo.ca:2530/image?img="
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define DUM_URL "https://example.com/"
 #define BUF_SIZE 10240 /* 1024*10 = 10K */

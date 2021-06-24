@@ -50,6 +50,11 @@ pthread_mutex_t mutex;
 int pindex = 0;
 int cindex = 0;
 int shmid;
+int shmid_counter;
+
+
+RECV_BUF *p_shm_recv_buf;
+int *counter;
 
 
 int main( int argc, char** argv )
@@ -62,8 +67,17 @@ int main( int argc, char** argv )
 
     // printf("%u, %u, %u, %u, %u \n", buffer_size, n_consumers, n_producers, ms_consumer_sleeps, n_image);
 
+    p_shm_recv_buf = malloc(50*(sizeof(RECV_BUF)));
+    counter = malloc(1*(sizeof(int)));
 
-    RECV_BUF *p_shm_recv_buf;
+    shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
+    if ( shmid == -1 ) {
+        perror("shmget");
+        abort();
+    }
+    counter = shmat( shmid_counter, NULL, 0 );
+    *counter = 0;
+
     int n_consumer = 1;
     int n_producer = 1;
     int buf_size = 10240;
@@ -156,10 +170,10 @@ void producer(RECV_BUF *p_shm_recv_buf) {
 
 
 void consumer(RECV_BUF *p_shm_recv_buf) {
-    printf("in consumer\n");
-    sem_wait(&items);
-    pthread_mutex_lock(&mutex);
-    /* read from shared memory here */
-    pthread_mutex_unlock(&mutex);
-    sem_post(&spaces);
+    // printf("in consumer\n");
+    // sem_wait(&items);
+    // pthread_mutex_lock(&mutex);
+    // /* read from shared memory here */
+    // pthread_mutex_unlock(&mutex);
+    // sem_post(&spaces);
 }

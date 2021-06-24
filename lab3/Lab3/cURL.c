@@ -147,9 +147,9 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
         strcpy(url, IMG_URL_3); 
     }
 
-    printf("in producer222\n");
 
     strncat(url, &image , 1);
+    strncat(url, "&part=1" , 7);
     /* init a curl session */
     curl_handle = curl_easy_init();
 
@@ -174,7 +174,6 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
     /* some servers requires a user-agent field */
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-    printf("in producer333\n");
     /* get it! */
     res = curl_easy_perform(curl_handle);
 
