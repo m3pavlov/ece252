@@ -24,20 +24,14 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <semaphore.h>
+#include <pthread.h>
+#include "cURL.h"
 
 #define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
 
 int worker(int n);
-void producer();
-void consumer();
-
-typedef struct recv_buf_flat {
-    char *buf;       /* memory to hold a copy of received data */
-    size_t size;     /* size of valid data in buf in bytes*/
-    size_t max_size; /* max capacity of buf in bytes*/
-    int seq;         /* >=0 sequence number extracted from http header */
-                     /* <0 indicates an invalid seq number */
-} RECV_BUF;
+void producer(RECV_BUF *p_shm_recv_buf);
+void consumer(RECV_BUF *p_shm_recv_buf);
 
 /**
  * @brief sleeps (n+1)*1000 milliseconds
@@ -50,7 +44,11 @@ int worker(int n)
     return 0;
 }
 
-sem_t sem;
+sem_t spaces;
+sem_t items;
+pthread_mutex_t mutex;
+int pindex = 0;
+int cindex = 0;
 int shmid;
 
 
@@ -65,12 +63,25 @@ int main( int argc, char** argv )
     // printf("%u, %u, %u, %u, %u \n", buffer_size, n_consumers, n_producers, ms_consumer_sleeps, n_image);
 
 
+    RECV_BUF *p_shm_recv_buf;
     int n_consumer = 1;
     int n_producer = 1;
     int buf_size = 10240;
-    sem_init( &sem, 0, 1);
-
+    sem_init( &spaces, 0, buf_size);
+    sem_init( &items, 0, 0);
+    pthread_mutex_init( &mutex, NULL );
     int num_child = n_consumer + n_producer;
+    int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+
+    printf("shm_size = %d.\n", shm_size);
+    shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    if ( shmid == -1 ) {
+        perror("shmget");
+        abort();
+    }
+    p_shm_recv_buf = shmat(shmid, NULL, 0);
+    shm_recv_buf_init(p_shm_recv_buf, BUF_SIZE);
+
 
     int i=0;
     pid_t pid=0;
@@ -97,9 +108,9 @@ int main( int argc, char** argv )
         } else if ( pid == 0 ) { /* child proc */
 
             if (i < n_producer)
-                producer();
+                producer(p_shm_recv_buf);
             else
-                consumer();
+                consumer(p_shm_recv_buf);
 
             break;
         }
@@ -122,18 +133,33 @@ int main( int argc, char** argv )
         times[1] = (tv.tv_sec) + tv.tv_usec/1000000.;
         printf("Parent pid = %d: total execution time is %.6lf seconds\n", getpid(),  times[1] - times[0]);
     }
-
-    sem_destroy(&sem);
+    shmdt(p_shm_recv_buf);
+    shmctl(shmid, IPC_RMID, NULL);
+    sem_destroy(&spaces);
+    sem_destroy(&items);
+    pthread_mutex_destroy(&mutex);
     curl_global_cleanup();
     return 0;
 }
 
 
-void producer() {
+void producer(RECV_BUF *p_shm_recv_buf) {
     printf("in producer\n");
+    sem_wait(&spaces);
+    pthread_mutex_lock(&mutex);
+    /* write to shared memory here */
+    get_cURL( 1, 1, p_shm_recv_buf );
+    pthread_mutex_unlock(&mutex);
+    sem_post(&items);
+    printf("in psoted items\n");
 }
 
 
-void consumer() {
+void consumer(RECV_BUF *p_shm_recv_buf) {
     printf("in consumer\n");
+    sem_wait(&items);
+    pthread_mutex_lock(&mutex);
+    /* read from shared memory here */
+    pthread_mutex_unlock(&mutex);
+    sem_post(&spaces);
 }

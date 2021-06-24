@@ -125,34 +125,31 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 }
 
 
-int get_cURL( int argc, char** argv ) 
+int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf ) 
 {
+    char image = image_option + '0';
     CURL *curl_handle;
     CURLcode res;
     char url[256];
-    RECV_BUF *p_shm_recv_buf;
-    int shmid;
-    int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+    // RECV_BUF *p_shm_recv_buf;
+    // int shmid;
+    // int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
     char fname[256];
     pid_t pid =getpid();
-
-    printf("shm_size = %d.\n", shm_size);
-    shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    if ( shmid == -1 ) {
-        perror("shmget");
-        abort();
-    }
-
-    p_shm_recv_buf = shmat(shmid, NULL, 0);
-    shm_recv_buf_init(p_shm_recv_buf, BUF_SIZE);
     
-    if (argc == 1) {
-        strcpy(url, IMG_URL); 
-    } else {
-        strcpy(url, argv[1]);
+    if (server == 1){
+        strcpy(url, IMG_URL_1); 
     }
-    printf("%s: URL is %s\n", argv[0], url);
+    else if(server == 2) {
+        strcpy(url, IMG_URL_2); 
+    }
+    else{
+        strcpy(url, IMG_URL_3); 
+    }
 
+    printf("in producer222\n");
+
+    strncat(url, &image , 1);
     /* init a curl session */
     curl_handle = curl_easy_init();
 
@@ -177,7 +174,7 @@ int get_cURL( int argc, char** argv )
     /* some servers requires a user-agent field */
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-    
+    printf("in producer333\n");
     /* get it! */
     res = curl_easy_perform(curl_handle);
 
@@ -193,7 +190,7 @@ int get_cURL( int argc, char** argv )
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
-    shmdt(p_shm_recv_buf);
-    shmctl(shmid, IPC_RMID, NULL);
+    // shmdt(p_shm_recv_buf);
+    // shmctl(shmid, IPC_RMID, NULL);
     return 0;
 }

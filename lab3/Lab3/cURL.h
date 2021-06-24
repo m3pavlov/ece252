@@ -1,8 +1,10 @@
 #include <stdlib.h>
 
-#define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
-#define DUM_URL "https://example.com/"
+#define IMG_URL_1 "http://ece252-1.uwaterloo.ca:2520/image?img="
+#define IMG_URL_2 "http://ece252-2.uwaterloo.ca:2520/image?img="
+#define IMG_URL_3 "http://ece252-3.uwaterloo.ca:2520/image?img="
 #define ECE252_HEADER "X-Ece252-Fragment: "
+#define DUM_URL "https://example.com/"
 #define BUF_SIZE 10240 /* 1024*10 = 10K */
 
 /* This is a flattened structure, buf points to 
@@ -43,6 +45,6 @@ typedef struct recv_buf_flat {
 
 size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
 size_t write_cb_curl(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
-int recv_buf_init(RECV_BUF *ptr, size_t max_size);
-int recv_buf_cleanup(RECV_BUF *ptr);
-int get_cURL( int argc, char** argv );
+int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes);
+int sizeof_shm_recv_buf(size_t nbytes);
+int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf );
