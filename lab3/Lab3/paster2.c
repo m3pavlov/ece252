@@ -44,8 +44,7 @@ int worker(int n)
     return 0;
 }
 
-sem_t spaces;
-sem_t items;
+
 pthread_mutex_t mutex;
 int pindex = 0;
 int cindex = 0;
@@ -55,6 +54,8 @@ int shmid_counter;
 
 RECV_BUF *p_shm_recv_buf;
 int *counter;
+sem_t *spaces;
+sem_t *items;
 
 
 int main( int argc, char** argv )
@@ -64,8 +65,12 @@ int main( int argc, char** argv )
     // int n_producers = atoi(argv[3]);
     // int ms_consumer_sleeps = atoi(argv[4]);
     // int n_image = atoi(argv[5]);
-
     // printf("%u, %u, %u, %u, %u \n", buffer_size, n_consumers, n_producers, ms_consumer_sleeps, n_image);
+    int shmid_spaces = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid_items = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+    spaces = shmat(shmid_spaces, NULL, 0);
+    items = shmat(shmid_items, NULL, 0);
 
     p_shm_recv_buf = malloc(50*(sizeof(RECV_BUF)));
     counter = malloc(1*(sizeof(int)));
@@ -80,9 +85,9 @@ int main( int argc, char** argv )
 
     int n_consumer = 1;
     int n_producer = 1;
-    int buf_size = 10240;
-    sem_init( &spaces, 0, buf_size);
-    sem_init( &items, 0, 0);
+    int buf_size = 5;
+    sem_init( spaces, 1, buf_size );
+    sem_init( items, 1, 0 );
     pthread_mutex_init( &mutex, NULL );
     int num_child = n_consumer + n_producer;
     int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
@@ -149,8 +154,8 @@ int main( int argc, char** argv )
     }
     shmdt(p_shm_recv_buf);
     shmctl(shmid, IPC_RMID, NULL);
-    sem_destroy(&spaces);
-    sem_destroy(&items);
+    sem_destroy(spaces);
+    sem_destroy(items);
     pthread_mutex_destroy(&mutex);
     curl_global_cleanup();
     return 0;
@@ -159,21 +164,39 @@ int main( int argc, char** argv )
 
 void producer(RECV_BUF *p_shm_recv_buf) {
     printf("in producer\n");
-    sem_wait(&spaces);
-    pthread_mutex_lock(&mutex);
-    /* write to shared memory here */
-    get_cURL( 1, 1, p_shm_recv_buf );
-    pthread_mutex_unlock(&mutex);
-    sem_post(&items);
-    printf("in psoted items\n");
+    // printf("counter: %i\n",counter);
+    sem_wait(spaces);
+    printf("producer can go\n");
+    // pthread_mutex_lock(&mutex);
+    // /* write to shared memory here */
+    // get_cURL( 1, 1, p_shm_recv_buf );
+    // counter+=1;
+    // printf("counter mutex: %ls\n",counter);
+    // pthread_mutex_unlock(&mutex);
+    // int value1;
+    // sem_getvalue(items, &value1);
+    // printf("VALUE pre post: %d\n",value1);
+
+    sem_post(items);
+
+    // int value2;
+    // sem_getvalue(&items, &value2);
+    // printf("VALUE post post: %d\n",value2);
+
+    printf("after posted items\n");
 }
 
 
 void consumer(RECV_BUF *p_shm_recv_buf) {
+    // int value;
+    // sem_getvalue(items, &value);
+    // printf("VALUE: %d\n",value);
+    sem_wait(items);
     // printf("in consumer\n");
-    // sem_wait(&items);
-    // pthread_mutex_lock(&mutex);
-    // /* read from shared memory here */
-    // pthread_mutex_unlock(&mutex);
-    // sem_post(&spaces);
+    printf("consumer can go\n");
+    // // pthread_mutex_lock(&mutex);
+    // // /* read from shared memory here */
+    // // printf("counter mutex: %ls\n",counter);
+    // // pthread_mutex_unlock(&mutex);
+    sem_post(spaces);
 }
