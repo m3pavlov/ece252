@@ -72,16 +72,17 @@ int main( int argc, char** argv )
     spaces = shmat(shmid_spaces, NULL, 0);
     items = shmat(shmid_items, NULL, 0);
 
-    p_shm_recv_buf = malloc(50*(sizeof(RECV_BUF)));
-    counter = malloc(1*(sizeof(int)));
+    // p_shm_recv_buf = malloc(50*(sizeof(RECV_BUF)));
+    // counter = malloc(1*(sizeof(int)));
 
     shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
-    if ( shmid == -1 ) {
-        perror("shmget");
-        abort();
-    }
     counter = shmat( shmid_counter, NULL, 0 );
-    *counter = 0;
+
+    // if ( shmid == -1 ) {
+    //     perror("shmget");
+    //     abort();
+    // }
+    // *counter = 0;
 
     int n_consumer = 1;
     int n_producer = 1;
@@ -164,39 +165,28 @@ int main( int argc, char** argv )
 
 void producer(RECV_BUF *p_shm_recv_buf) {
     printf("in producer\n");
-    // printf("counter: %i\n",counter);
     sem_wait(spaces);
     printf("producer can go\n");
-    // pthread_mutex_lock(&mutex);
-    // /* write to shared memory here */
-    // get_cURL( 1, 1, p_shm_recv_buf );
-    // counter+=1;
-    // printf("counter mutex: %ls\n",counter);
-    // pthread_mutex_unlock(&mutex);
-    // int value1;
-    // sem_getvalue(items, &value1);
-    // printf("VALUE pre post: %d\n",value1);
+    pthread_mutex_lock(&mutex);
+    /* write to shared memory here */
+    get_cURL( 1, 1, p_shm_recv_buf );
+    *counter+=1;
+    printf("counter mutex: %u\n",*counter);
+    pthread_mutex_unlock(&mutex);
 
     sem_post(items);
-
-    // int value2;
-    // sem_getvalue(&items, &value2);
-    // printf("VALUE post post: %d\n",value2);
 
     printf("after posted items\n");
 }
 
 
 void consumer(RECV_BUF *p_shm_recv_buf) {
-    // int value;
-    // sem_getvalue(items, &value);
-    // printf("VALUE: %d\n",value);
     sem_wait(items);
-    // printf("in consumer\n");
     printf("consumer can go\n");
-    // // pthread_mutex_lock(&mutex);
-    // // /* read from shared memory here */
-    // // printf("counter mutex: %ls\n",counter);
-    // // pthread_mutex_unlock(&mutex);
+    pthread_mutex_lock(&mutex);
+    /* read from shared memory here */
+    *counter+=1;
+    printf("counter mutex: %u\n",*counter);
+    pthread_mutex_unlock(&mutex);
     sem_post(spaces);
 }

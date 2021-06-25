@@ -186,6 +186,7 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
     }
 
     sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
+    printf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
