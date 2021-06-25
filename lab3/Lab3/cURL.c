@@ -127,8 +127,9 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 
 int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf ) 
 {
-    char image = image_option + '0';
-    char n_server = server + '0';
+    // char image = image_option + '0';
+    // char image_str[2];
+    // char n_server = server + '0';
     CURL *curl_handle;
     CURLcode res;
     char url[256];
@@ -137,27 +138,30 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
     // int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
     char fname[256];
     pid_t pid =getpid();
-    
+    // sprintf(image_str, "%i", image_option);
     if (server == 1){
-        strcpy(url, IMG_URL_1); 
+        // strcpy(url, IMG_URL_1); 
+        sprintf(url, "http://ece252-1.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
     else if(server == 2) {
-        strcpy(url, IMG_URL_2); 
+        // strcpy(url, IMG_URL_2); 
+        sprintf(url, "http://ece252-2.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
     else{
-        strcpy(url, IMG_URL_3); 
+        // strcpy(url, IMG_URL_3); 
+        sprintf(url, "http://ece252-3.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
 
-    printf("REQ SEQ: %i\n",image_option);
+    // printf("REQ SEQ STR: %s\n",image_str);
     // sprintf(image_option, image, 1);
     // printf("REQ SEQ STRIGNJ: %s\n",image);
     shm_recv_buf_init(p_shm_recv_buf, 10240);
 
-    strncat(url, &n_server , 1);
-    strncat(url, "&part=" , 6);
-    strncat(url, &image, 1);
+    // strncat(url, &n_server , 1);
+    // strncat(url, "&part=" , 6);
+    // strncat(url, &image_str[0], 2);
 
-    printf("URL -> %s", url);
+    printf("URL -> %s\n", url);
     /* init a curl session */
     curl_handle = curl_easy_init();
 
@@ -193,7 +197,7 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
         
     }
 
-    sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
+    // sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
     printf("./output_%d_%d.png\n", p_shm_recv_buf->seq, pid);
 
     /* cleaning up */

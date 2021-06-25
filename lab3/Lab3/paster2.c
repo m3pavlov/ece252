@@ -84,8 +84,8 @@ int main( int argc, char** argv )
     // }
     // *counter = 0;
 
-    int n_consumer = 6;
-    int n_producer = 3;
+    int n_consumer = 1;
+    int n_producer = 1;
     int buf_size = 5;
     sem_init( spaces, 1, buf_size );
     sem_init( items, 1, 0 );
@@ -101,7 +101,6 @@ int main( int argc, char** argv )
     }
     p_shm_recv_buf = shmat(shmid, NULL, 0);
     // p_shm_recv_buf = malloc(buf_size*(10240));
-    shm_recv_buf_init(p_shm_recv_buf, 10240);
     *counter=0;
     int i=0;
     pid_t pid=0;
@@ -172,6 +171,7 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         printf("producer can go\n");
         pthread_mutex_lock(&mutex);
         /* write to shared memory here */
+        shm_recv_buf_init(&p_shm_recv_buf[cindex], 10240);
         if (p_shm_recv_buf[pindex].size == 0) {
 
             int server = *counter % 3;
@@ -209,7 +209,7 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         if (p_shm_recv_buf[cindex].size != 0) {
             /* SLEEP FOR X TIME */
             RECV_BUF temp = p_shm_recv_buf[cindex];
-            p_shm_recv_buf[cindex].size = 0;
+            shm_recv_buf_init(&p_shm_recv_buf[cindex], 10240);
             printf("tempSEQ: %u \n", temp.seq);
         }
         printf("counter mutex: %u \n",*counter);
