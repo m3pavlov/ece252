@@ -30,8 +30,8 @@
 #define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
 
 int worker(int n);
-void producer(RECV_BUF *p_shm_recv_buf);
-void consumer(RECV_BUF *p_shm_recv_buf);
+void producer(RECV_BUF *p_shm_recv_buf, int buf_size);
+void consumer(RECV_BUF *p_shm_recv_buf, int buf_size);
 
 /**
  * @brief sleeps (n+1)*1000 milliseconds
@@ -100,8 +100,8 @@ int main( int argc, char** argv )
         abort();
     }
     p_shm_recv_buf = shmat(shmid, NULL, 0);
-    shm_recv_buf_init(p_shm_recv_buf, BUF_SIZE);
-
+    // p_shm_recv_buf = malloc(buf_size*(10240));
+    shm_recv_buf_init(p_shm_recv_buf, 10240);
 
     int i=0;
     pid_t pid=0;
@@ -128,9 +128,9 @@ int main( int argc, char** argv )
         } else if ( pid == 0 ) { /* child proc */
 
             if (i < n_producer)
-                producer(p_shm_recv_buf);
+                producer(p_shm_recv_buf, buf_size);
             else
-                consumer(p_shm_recv_buf);
+                consumer(p_shm_recv_buf, buf_size);
 
             break;
         }
@@ -163,14 +163,19 @@ int main( int argc, char** argv )
 }
 
 
-void producer(RECV_BUF *p_shm_recv_buf) {
+void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
     printf("in producer\n");
     sem_wait(spaces);
     printf("producer can go\n");
     pthread_mutex_lock(&mutex);
     /* write to shared memory here */
-    get_cURL( 1, 1, p_shm_recv_buf );
-    *counter+=1;
+    if (p_shm_recv_buf[pindex].size == 0) {
+        get_cURL( 1, 1, &p_shm_recv_buf[pindex] );
+        printf("size at pindex: %i = %i\n", pindex, p_shm_recv_buf[pindex].size);
+        printf("seq at pindex: %i = %i\n", pindex, p_shm_recv_buf[pindex].seq);
+        pindex = (pindex+1)%buf_size;
+        *counter+=1;
+    }
     printf("counter mutex: %u\n",*counter);
     pthread_mutex_unlock(&mutex);
 
@@ -180,12 +185,20 @@ void producer(RECV_BUF *p_shm_recv_buf) {
 }
 
 
-void consumer(RECV_BUF *p_shm_recv_buf) {
+void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
     sem_wait(items);
     printf("consumer can go\n");
     pthread_mutex_lock(&mutex);
     /* read from shared memory here */
-    *counter+=1;
+    printf("size at cindex: %i = %i\n", cindex, p_shm_recv_buf[cindex].size);
+    printf("seq at cindex: %i = %i\n", cindex, p_shm_recv_buf[cindex].seq);
+    if (p_shm_recv_buf[cindex].size != 0) {
+        /* SLEEP FOR X TIME */
+        RECV_BUF temp = p_shm_recv_buf[cindex];
+        p_shm_recv_buf[cindex].size = 0;
+        cindex = (cindex+1)%buf_size;
+        printf("tempSEQ: %i\n", temp.seq);
+    }
     printf("counter mutex: %u\n",*counter);
     pthread_mutex_unlock(&mutex);
     sem_post(spaces);
