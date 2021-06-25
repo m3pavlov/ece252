@@ -84,8 +84,8 @@ int main( int argc, char** argv )
     // }
     // *counter = 0;
 
-    int n_consumer = 1;
-    int n_producer = 1;
+    int n_consumer = 6;
+    int n_producer = 3;
     int buf_size = 5;
     sem_init( spaces, 1, buf_size );
     sem_init( items, 1, 0 );
@@ -101,7 +101,6 @@ int main( int argc, char** argv )
     }
     p_shm_recv_buf = shmat(shmid, NULL, 0);
     // p_shm_recv_buf = malloc(buf_size*(10240));
-    shm_recv_buf_init(p_shm_recv_buf, 10240);
 
     int i=0;
     pid_t pid=0;
@@ -164,42 +163,59 @@ int main( int argc, char** argv )
 
 
 void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
+
+    while(counter!=50){
     printf("in producer\n");
     sem_wait(spaces);
     printf("producer can go\n");
     pthread_mutex_lock(&mutex);
     /* write to shared memory here */
     if (p_shm_recv_buf[pindex].size == 0) {
-        get_cURL( 1, 1, &p_shm_recv_buf[pindex] );
-        printf("size at pindex: %i = %i\n", pindex, p_shm_recv_buf[pindex].size);
-        printf("seq at pindex: %i = %i\n", pindex, p_shm_recv_buf[pindex].seq);
-        pindex = (pindex+1)%buf_size;
+
+        int server = *counter % 3;
+
+        if (server == 0){
+            server = 3;
+        }
+
+        shm_recv_buf_init(&p_shm_recv_buf[*counter], 10240);
+        get_cURL( *counter, server, &p_shm_recv_buf[pindex] );
+        printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
+        printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
         *counter+=1;
     }
     printf("counter mutex: %u\n",*counter);
+
+    pindex = (pindex+1)%buf_size;
     pthread_mutex_unlock(&mutex);
 
     sem_post(items);
 
     printf("after posted items\n");
+    }
 }
 
 
 void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
+
+    while(counter!= 50){
     sem_wait(items);
     printf("consumer can go\n");
     pthread_mutex_lock(&mutex);
     /* read from shared memory here */
-    printf("size at cindex: %i = %i\n", cindex, p_shm_recv_buf[cindex].size);
-    printf("seq at cindex: %i = %i\n", cindex, p_shm_recv_buf[cindex].seq);
+    printf("size at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].size);
+    printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
     if (p_shm_recv_buf[cindex].size != 0) {
         /* SLEEP FOR X TIME */
         RECV_BUF temp = p_shm_recv_buf[cindex];
         p_shm_recv_buf[cindex].size = 0;
-        cindex = (cindex+1)%buf_size;
-        printf("tempSEQ: %i\n", temp.seq);
+        printf("tempSEQ: %u \n", temp.seq);
     }
-    printf("counter mutex: %u\n",*counter);
+    printf("counter mutex: %u \n",*counter);
+    cindex = (cindex+1)%buf_size;
     pthread_mutex_unlock(&mutex);
     sem_post(spaces);
+    }
+
+
 }

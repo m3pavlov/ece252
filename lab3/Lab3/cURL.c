@@ -128,6 +128,7 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf ) 
 {
     char image = image_option + '0';
+    char n_server = server + '0';
     CURL *curl_handle;
     CURLcode res;
     char url[256];
@@ -149,7 +150,8 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
 
 
     strncat(url, &image , 1);
-    strncat(url, "&part=1" , 7);
+    strncat(url, "&part=" , 6);
+    strncat(url, &n_server, 1);
     /* init a curl session */
     curl_handle = curl_easy_init();
 
