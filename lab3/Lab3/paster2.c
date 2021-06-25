@@ -101,7 +101,8 @@ int main( int argc, char** argv )
     }
     p_shm_recv_buf = shmat(shmid, NULL, 0);
     // p_shm_recv_buf = malloc(buf_size*(10240));
-
+    shm_recv_buf_init(p_shm_recv_buf, 10240);
+    *counter=0;
     int i=0;
     pid_t pid=0;
     pid_t cpids[num_child];
@@ -118,7 +119,7 @@ int main( int argc, char** argv )
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     for ( i = 0; i < num_child; i++) {
-        
+
         pid = fork();
 
         if ( pid < 0 ) {        /* fork failed */
@@ -126,10 +127,12 @@ int main( int argc, char** argv )
             abort();
         } else if ( pid == 0 ) { /* child proc */
 
-            if (i < n_producer)
+            if (i < n_producer) {
                 producer(p_shm_recv_buf, buf_size);
-            else
+            }
+            else {
                 consumer(p_shm_recv_buf, buf_size);
+            }
 
             break;
         }
@@ -163,58 +166,56 @@ int main( int argc, char** argv )
 
 
 void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
-
-    while(counter!=50){
     printf("in producer\n");
-    sem_wait(spaces);
-    printf("producer can go\n");
-    pthread_mutex_lock(&mutex);
-    /* write to shared memory here */
-    if (p_shm_recv_buf[pindex].size == 0) {
+    while(*counter < 50){
+        sem_wait(spaces);
+        printf("producer can go\n");
+        pthread_mutex_lock(&mutex);
+        /* write to shared memory here */
+        if (p_shm_recv_buf[pindex].size == 0) {
 
-        int server = *counter % 3;
+            int server = *counter % 3;
 
-        if (server == 0){
-            server = 3;
+            if (server == 0){
+                server = 3;
+            }
+
+            get_cURL( *counter, server, &p_shm_recv_buf[pindex] );
+            printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
+            printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
+            *counter+=1;
         }
+        printf("counter mutex: %u\n",*counter);
 
-        shm_recv_buf_init(&p_shm_recv_buf[*counter], 10240);
-        get_cURL( *counter, server, &p_shm_recv_buf[pindex] );
-        printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
-        printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
-        *counter+=1;
-    }
-    printf("counter mutex: %u\n",*counter);
+        pindex = (pindex+1)%buf_size;
+        pthread_mutex_unlock(&mutex);
 
-    pindex = (pindex+1)%buf_size;
-    pthread_mutex_unlock(&mutex);
+        sem_post(items);
 
-    sem_post(items);
-
-    printf("after posted items\n");
+        printf("after posted items\n");
     }
 }
 
 
 void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
 
-    while(counter!= 50){
-    sem_wait(items);
-    printf("consumer can go\n");
-    pthread_mutex_lock(&mutex);
-    /* read from shared memory here */
-    printf("size at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].size);
-    printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
-    if (p_shm_recv_buf[cindex].size != 0) {
-        /* SLEEP FOR X TIME */
-        RECV_BUF temp = p_shm_recv_buf[cindex];
-        p_shm_recv_buf[cindex].size = 0;
-        printf("tempSEQ: %u \n", temp.seq);
-    }
-    printf("counter mutex: %u \n",*counter);
-    cindex = (cindex+1)%buf_size;
-    pthread_mutex_unlock(&mutex);
-    sem_post(spaces);
+    while(*counter < 50){
+        sem_wait(items);
+        printf("consumer can go\n");
+        pthread_mutex_lock(&mutex);
+        /* read from shared memory here */
+        printf("size at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].size);
+        printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
+        if (p_shm_recv_buf[cindex].size != 0) {
+            /* SLEEP FOR X TIME */
+            RECV_BUF temp = p_shm_recv_buf[cindex];
+            p_shm_recv_buf[cindex].size = 0;
+            printf("tempSEQ: %u \n", temp.seq);
+        }
+        printf("counter mutex: %u \n",*counter);
+        cindex = (cindex+1)%buf_size;
+        pthread_mutex_unlock(&mutex);
+        sem_post(spaces);
     }
 
 

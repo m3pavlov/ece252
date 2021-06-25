@@ -148,10 +148,16 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
         strcpy(url, IMG_URL_3); 
     }
 
+    printf("REQ SEQ: %i\n",image_option);
+    // sprintf(image_option, image, 1);
+    // printf("REQ SEQ STRIGNJ: %s\n",image);
+    shm_recv_buf_init(p_shm_recv_buf, 10240);
 
-    strncat(url, &image , 1);
+    strncat(url, &n_server , 1);
     strncat(url, "&part=" , 6);
-    strncat(url, &n_server, 1);
+    strncat(url, &image, 1);
+
+    printf("URL -> %s", url);
     /* init a curl session */
     curl_handle = curl_easy_init();
 
@@ -188,7 +194,7 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
     }
 
     sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
-    printf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
+    printf("./output_%d_%d.png\n", p_shm_recv_buf->seq, pid);
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
