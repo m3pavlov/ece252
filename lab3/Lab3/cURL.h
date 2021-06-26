@@ -47,4 +47,4 @@ size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
 size_t write_cb_curl(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
 int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes);
 int sizeof_shm_recv_buf(size_t nbytes);
-int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf );
+int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex );

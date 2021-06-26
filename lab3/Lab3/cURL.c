@@ -125,41 +125,25 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
 }
 
 
-int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf ) 
+int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex ) 
 {
-    // char image = image_option + '0';
-    // char image_str[2];
-    // char n_server = server + '0';
     CURL *curl_handle;
     CURLcode res;
     char url[256];
-    // RECV_BUF *p_shm_recv_buf;
-    // int shmid;
-    // int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
     char fname[256];
     pid_t pid =getpid();
-    // sprintf(image_str, "%i", image_option);
+
     if (server == 1){
-        // strcpy(url, IMG_URL_1); 
         sprintf(url, "http://ece252-1.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
     else if(server == 2) {
-        // strcpy(url, IMG_URL_2); 
         sprintf(url, "http://ece252-2.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
     else{
-        // strcpy(url, IMG_URL_3); 
         sprintf(url, "http://ece252-3.uwaterloo.ca:2530/image?img=%d&part=%d", server, image_option);
     }
 
-    // printf("REQ SEQ STR: %s\n",image_str);
-    // sprintf(image_option, image, 1);
-    // printf("REQ SEQ STRIGNJ: %s\n",image);
-    shm_recv_buf_init(p_shm_recv_buf, 10240);
-
-    // strncat(url, &n_server , 1);
-    // strncat(url, "&part=" , 6);
-    // strncat(url, &image_str[0], 2);
+    // shm_recv_buf_init(p_shm_recv_buf, 10240);
 
     printf("URL -> %s\n", url);
     /* init a curl session */
@@ -192,17 +176,13 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf )
     if( res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
     } else {
-	printf("%lu bytes received in memory %p, seq=%d.\n",  \
-               p_shm_recv_buf->size, p_shm_recv_buf->buf, p_shm_recv_buf->seq);
-        
+	    printf("%lu bytes received in memory %p, seq=%d.\n", p_shm_recv_buf->size, p_shm_recv_buf->buf, p_shm_recv_buf->seq);
     }
 
-    // sprintf(fname, "./output_%d_%d.png", p_shm_recv_buf->seq, pid);
     printf("./output_%d_%d.png\n", p_shm_recv_buf->seq, pid);
 
     /* cleaning up */
     curl_easy_cleanup(curl_handle);
-    // shmdt(p_shm_recv_buf);
-    // shmctl(shmid, IPC_RMID, NULL);
+
     return 0;
 }

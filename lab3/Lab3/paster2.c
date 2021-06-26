@@ -26,8 +26,10 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include "cURL.h"
+#include "shm_stack.h"
 
 #define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
+#define BUF_SIZE 10240
 
 int worker(int n);
 void producer(RECV_BUF *p_shm_recv_buf, int buf_size);
@@ -48,8 +50,8 @@ int worker(int n)
 pthread_mutex_t mutex;
 int pindex = 0;
 int cindex = 0;
-int shmid;
-int shmid_counter;
+// int shmid;
+// int shmid_counter;
 
 
 RECV_BUF *p_shm_recv_buf;
@@ -57,6 +59,7 @@ int *counter;
 sem_t *spaces;
 sem_t *items;
 
+char *inflated_IDAT_data;
 
 int main( int argc, char** argv )
 {
@@ -66,44 +69,46 @@ int main( int argc, char** argv )
     // int ms_consumer_sleeps = atoi(argv[4]);
     // int n_image = atoi(argv[5]);
     // printf("%u, %u, %u, %u, %u \n", buffer_size, n_consumers, n_producers, ms_consumer_sleeps, n_image);
-    int shmid_spaces = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    int shmid_items = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-
-    spaces = shmat(shmid_spaces, NULL, 0);
-    items = shmat(shmid_items, NULL, 0);
-
-    // p_shm_recv_buf = malloc(50*(sizeof(RECV_BUF)));
-    // counter = malloc(1*(sizeof(int)));
-
-    shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
-    counter = shmat( shmid_counter, NULL, 0 );
-
-    // if ( shmid == -1 ) {
-    //     perror("shmget");
-    //     abort();
-    // }
-    // *counter = 0;
 
     int n_consumer = 1;
     int n_producer = 1;
     int buf_size = 5;
-    sem_init( spaces, 1, buf_size );
-    sem_init( items, 1, 0 );
-    pthread_mutex_init( &mutex, NULL );
     int num_child = n_consumer + n_producer;
     int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
 
-    printf("shm_size = %d.\n", shm_size);
-    shmid = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    if ( shmid == -1 ) {
+    int shmid_buf = shmget(IPC_PRIVATE, shm_size*50, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid_spaces = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid_items = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
+
+    if ( shmid_buf == -1 || shmid_spaces == -1 || shmid_items == -1 || shmid_counter == -1 ) {
         perror("shmget");
         abort();
     }
-    p_shm_recv_buf = shmat(shmid, NULL, 0);
-    // p_shm_recv_buf = malloc(buf_size*(10240));
-    *counter=0;
-    int i=0;
-    pid_t pid=0;
+
+    p_shm_recv_buf = (RECV_BUF *)shmat(shmid_buf, NULL, 0);
+    // p_shm_recv_buf = 
+    // p_shm_recv_buf = malloc(buf_size*(BUF_SIZE));
+    spaces = shmat(shmid_spaces, NULL, 0);
+    items = shmat(shmid_items, NULL, 0);
+    counter = shmat( shmid_counter, NULL, 0 );
+
+    sem_init( spaces, 1, buf_size );
+    sem_init( items, 1, 0 );
+    pthread_mutex_init( &mutex, NULL );
+
+    // printf("shm_size = %d.\n", shm_size);
+
+    for (int j = 0; j < buf_size; j++) {
+        shm_recv_buf_init(&p_shm_recv_buf[j], shm_size);
+        // printf("setting SIZE: %i", p_shm_recv_buf[j].size);
+    }
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    *counter = 0;
+    int i = 0;
+    pid_t pid = 0;
     pid_t cpids[num_child];
     int state;
     double times[2];
@@ -115,9 +120,7 @@ int main( int argc, char** argv )
     }
     times[0] = (tv.tv_sec) + tv.tv_usec/1000000.;
     
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-
-    for ( i = 0; i < num_child; i++) {
+    for (i = 0; i < num_child; i++) {
 
         pid = fork();
 
@@ -130,7 +133,7 @@ int main( int argc, char** argv )
                 producer(p_shm_recv_buf, buf_size);
             }
             else {
-                consumer(p_shm_recv_buf, buf_size);
+                // consumer(p_shm_recv_buf, buf_size);
             }
 
             break;
@@ -154,45 +157,67 @@ int main( int argc, char** argv )
         times[1] = (tv.tv_sec) + tv.tv_usec/1000000.;
         printf("Parent pid = %d: total execution time is %.6lf seconds\n", getpid(),  times[1] - times[0]);
     }
+
+    /* cleanup */
+    // free(p_shm_recv_buf);
+    shmctl(shmid_buf, IPC_RMID, NULL);
     shmdt(p_shm_recv_buf);
-    shmctl(shmid, IPC_RMID, NULL);
+
+    shmctl(shmid_spaces, IPC_RMID, NULL);
     sem_destroy(spaces);
+
+    shmctl(shmid_items, IPC_RMID, NULL);
     sem_destroy(items);
+
+    shmctl(shmid_counter, IPC_RMID, NULL);
+    shmdt(counter);
+
     pthread_mutex_destroy(&mutex);
+
     curl_global_cleanup();
     return 0;
 }
 
 
 void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
-    printf("in producer\n");
+
     while(*counter < 50){
         sem_wait(spaces);
         printf("producer can go\n");
         pthread_mutex_lock(&mutex);
         /* write to shared memory here */
-        shm_recv_buf_init(&p_shm_recv_buf[cindex], 10240);
-        if (p_shm_recv_buf[pindex].size == 0) {
-
-            int server = *counter % 3;
-
-            if (server == 0){
-                server = 3;
+        {
+            for (int j = 0; j < buf_size; j++) {
+                // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
+                printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
             }
-
-            get_cURL( *counter, server, &p_shm_recv_buf[pindex] );
-            printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
-            printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
             *counter+=1;
+
+            printf("checking SIZE: %i at index: %i\n", p_shm_recv_buf[pindex].size, pindex);
+            if (p_shm_recv_buf[pindex].size == 0) {
+                int server = *counter % 3;
+                if (server == 0){
+                    server = 3;
+                }
+
+                get_cURL( *counter, server, &p_shm_recv_buf[pindex], pindex );
+
+                
+                for (int j = 0; j < buf_size; j++) {
+                    // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
+                    printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
+                }
+
+                printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
+                printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
+                *counter+=1;
+            }
+            printf("counter: %u\n",*counter);
+
+            pindex = (pindex+1)%buf_size;
         }
-        printf("counter mutex: %u\n",*counter);
-
-        pindex = (pindex+1)%buf_size;
         pthread_mutex_unlock(&mutex);
-
         sem_post(items);
-
-        printf("after posted items\n");
     }
 }
 
@@ -209,7 +234,7 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         if (p_shm_recv_buf[cindex].size != 0) {
             /* SLEEP FOR X TIME */
             RECV_BUF temp = p_shm_recv_buf[cindex];
-            shm_recv_buf_init(&p_shm_recv_buf[cindex], 10240);
+            shm_recv_buf_init(&p_shm_recv_buf[cindex], BUF_SIZE);
             printf("tempSEQ: %u \n", temp.seq);
         }
         printf("counter mutex: %u \n",*counter);
