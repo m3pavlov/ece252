@@ -6,7 +6,7 @@ CC = gcc       # compiler
 CFLAGS = -Wall -g  -std=gnu99# compilation flg 
 LD = gcc       # linker
 LDFLAGS = -g   # debugging symbols in build
-LDLIBS = -lcurl -pthread   # link with libz
+LDLIBS = -lcurl -pthread -ldl -lz -lm  # link with libz
 
 # For students 
 SRCS = paster2.c
