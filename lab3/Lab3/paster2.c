@@ -26,6 +26,9 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include "cURL.h"
+#include "lab_png.h"  /* simple PNG data structures  */
+#include "crc.h"  /* simple PNG data structures  */
+#include "zutil.h"
 
 #define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
 #define BUF_SIZE 10240
@@ -58,7 +61,8 @@ int *counter;
 sem_t *spaces;
 sem_t *items;
 
-char *inflated_IDAT_data;
+// char *inflated_IDAT_data;
+U8 idat_data; //[height_all*(width*4+1)]
 
 int main( int argc, char** argv )
 {
@@ -74,13 +78,16 @@ int main( int argc, char** argv )
     int buf_size = 5;
     int num_child = n_consumer + n_producer;
     int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+    int height_all = 6*50;
+    int width_all = 400;
 
-    int shmid_buf = shmget(IPC_PRIVATE, shm_size*50, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid_buf = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     int shmid_spaces = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     int shmid_items = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     int shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
+    int shmid_idat_data = shmget(IPC_PRIVATE, height_all*(width_all*4+1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
-    if ( shmid_buf == -1 || shmid_spaces == -1 || shmid_items == -1 || shmid_counter == -1 ) {
+    if ( shmid_buf == -1 || shmid_spaces == -1 || shmid_items == -1 || shmid_counter == -1 || shmid_idat_data == -1) {
         perror("shmget");
         abort();
     }
@@ -90,17 +97,15 @@ int main( int argc, char** argv )
     // p_shm_recv_buf = malloc(buf_size*(BUF_SIZE));
     spaces = shmat(shmid_spaces, NULL, 0);
     items = shmat(shmid_items, NULL, 0);
-    counter = shmat( shmid_counter, NULL, 0 );
+    counter = shmat(shmid_counter, NULL, 0);
+    idat_data = shmat(shmid_idat_data, NULL, 0);
 
     sem_init( spaces, 1, buf_size );
     sem_init( items, 1, 0 );
     pthread_mutex_init( &mutex, NULL );
 
-    // printf("shm_size = %d.\n", shm_size);
-
     for (int j = 0; j < buf_size; j++) {
         shm_recv_buf_init(&p_shm_recv_buf[j], shm_size);
-        // printf("setting SIZE: %i", p_shm_recv_buf[j].size);
     }
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -158,7 +163,6 @@ int main( int argc, char** argv )
     }
 
     /* cleanup */
-    // free(p_shm_recv_buf);
     shmctl(shmid_buf, IPC_RMID, NULL);
     shmdt(p_shm_recv_buf);
 
@@ -170,6 +174,9 @@ int main( int argc, char** argv )
 
     shmctl(shmid_counter, IPC_RMID, NULL);
     shmdt(counter);
+
+    shmctl(shmid_idat_data, IPC_RMID, NULL);
+    shmdt(idat_data);
 
     pthread_mutex_destroy(&mutex);
 
@@ -186,9 +193,6 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         pthread_mutex_lock(&mutex);
         /* write to shared memory here */
         {
-
-            *counter+=1;
-
             printf("checking SIZE: %i at index: %i\n", p_shm_recv_buf[pindex].size, pindex);
             if (p_shm_recv_buf[pindex].size == 0) {
                 int server = *counter % 3;
@@ -197,7 +201,6 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
                 }
 
                 for (int j = 0; j < buf_size; j++) {
-                // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
                     printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
                 }
 
@@ -205,7 +208,6 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
 
                 
                 for (int j = 0; j < buf_size; j++) {
-                    // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
                     printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
                 }
 
@@ -234,9 +236,35 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
         if (p_shm_recv_buf[cindex].size != 0) {
             /* SLEEP FOR X TIME */
+
+            /* get data from producer */
             RECV_BUF temp = p_shm_recv_buf[cindex];
             shm_recv_buf_init(&p_shm_recv_buf[cindex], BUF_SIZE);
             printf("tempSEQ: %u \n", temp.seq);
+
+            /* get idat data uncompressed and store in shared mem */
+
+            int idat_index = 0;
+            int length_all = 0;
+            struct chunk * idat;
+
+            U32 height = 6;
+            U32 width = 400;
+            U64 uncompressed_size = height*(width*4+1);
+            U8 temp_data[uncompressed_size];
+
+            /* using our helper function to get chunk information */
+            idat = retrieve_chunk(&temp.buf[33]);
+
+            length_all += idat->length;
+            mem_inf(&temp_data[0], &uncompressed_size, idat->p_data, idat->length);
+
+            /* uncompressed data goes into IDAT_data array */
+            memcpy(&idat_data[counter], &temp_data[0], uncompressed_size);
+
+            /* update the counter to keep track of which value the array is at */
+            counter += uncompressed_size;
+
         }
         printf("counter mutex: %u \n",*counter);
         cindex = (cindex+1)%buf_size;

@@ -15,7 +15,7 @@ TARGETS = paster2
 
 all: ${TARGETS}
 
-paster2: $(OBJS1) cURL.o
+paster2: $(OBJS1) cURL.o crc.o zutil.o
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
