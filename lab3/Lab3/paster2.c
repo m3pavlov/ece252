@@ -26,7 +26,6 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include "cURL.h"
-#include "shm_stack.h"
 
 #define IMG_URL "http://ece252-1.uwaterloo.ca:2530/image?img=1&part=20"
 #define BUF_SIZE 10240
@@ -187,10 +186,7 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         pthread_mutex_lock(&mutex);
         /* write to shared memory here */
         {
-            for (int j = 0; j < buf_size; j++) {
-                // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
-                printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
-            }
+
             *counter+=1;
 
             printf("checking SIZE: %i at index: %i\n", p_shm_recv_buf[pindex].size, pindex);
@@ -198,6 +194,11 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
                 int server = *counter % 3;
                 if (server == 0){
                     server = 3;
+                }
+
+                for (int j = 0; j < buf_size; j++) {
+                // shm_recv_buf_init(&p_shm_recv_buf[j], BUF_SIZE);
+                    printf("getting SIZE: %i\n", p_shm_recv_buf[j].size);
                 }
 
                 get_cURL( *counter, server, &p_shm_recv_buf[pindex], pindex );
