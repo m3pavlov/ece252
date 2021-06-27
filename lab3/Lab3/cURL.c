@@ -115,8 +115,11 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
     if ( ptr == NULL ) {
         return 1;
     }
-    
-    ptr->buf = (char *)ptr + sizeof(RECV_BUF);
+
+    int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+    int shmid_buf = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    ptr->buf = shmat(shmid_buf, NULL, 0);
+
     ptr->size = 0;
     ptr->max_size = nbytes;
     ptr->seq = -1;              /* valid seq should be non-negative */
@@ -188,7 +191,10 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex
 
     // printf("./output_%d_%d.png\n", p_shm_recv_buf_temp->seq, pid);
 
-    p_shm_recv_buf->buf = p_shm_recv_buf_temp->buf;
+    for ( int i = 0; i < p_shm_recv_buf_temp->size; i++){
+        p_shm_recv_buf->buf[i] = p_shm_recv_buf_temp->buf[i];
+    }
+
     p_shm_recv_buf->size = p_shm_recv_buf_temp->size;
     p_shm_recv_buf->max_size = p_shm_recv_buf_temp->max_size;
     p_shm_recv_buf->seq = p_shm_recv_buf_temp->seq;

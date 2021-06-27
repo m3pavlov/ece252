@@ -269,7 +269,7 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
             /* SLEEP FOR X TIME */
 
             printf("size at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].size);
-            printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
+            printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].buf[33]);
 
             /* get data from producer */
             RECV_BUF temp = p_shm_recv_buf[cindex];
