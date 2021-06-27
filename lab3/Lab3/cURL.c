@@ -115,8 +115,12 @@ int shm_recv_buf_init(RECV_BUF *ptr, size_t nbytes)
     if ( ptr == NULL ) {
         return 1;
     }
-    
-    ptr->buf = (char *)ptr + sizeof(RECV_BUF);
+    int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+    // for (int i=0; i<5; i++) {
+    //     ptr->buf[i] = (char *)ptr + sizeof(RECV_BUF);
+    // }
+    int shmid_buf = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    ptr->buf = shmat(shmid_buf, NULL, 0);
     ptr->size = 0;
     ptr->max_size = nbytes;
     ptr->seq = -1;              /* valid seq should be non-negative */
@@ -183,11 +187,13 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex
     if( res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
     } else {
-	    // printf("%lu bytes received in memory %p, seq=%d.\n", p_shm_recv_buf_temp->size, p_shm_recv_buf_temp->buf, p_shm_recv_buf_temp->seq);
+	    printf("%lu bytes received in memory %p, seq=%d.\n", p_shm_recv_buf_temp->size, p_shm_recv_buf_temp->buf, p_shm_recv_buf_temp->seq);
     }
 
     // printf("./output_%d_%d.png\n", p_shm_recv_buf_temp->seq, pid);
 
+    // memcpy(p_shm_recv_buf->buf, p_shm_recv_buf_temp->buf, sizeof(p_shm_recv_buf_temp->buf));
+    // strcpy(&p_shm_recv_buf->buf, &p_shm_recv_buf_temp->buf);
     p_shm_recv_buf->buf = p_shm_recv_buf_temp->buf;
     p_shm_recv_buf->size = p_shm_recv_buf_temp->size;
     p_shm_recv_buf->max_size = p_shm_recv_buf_temp->max_size;

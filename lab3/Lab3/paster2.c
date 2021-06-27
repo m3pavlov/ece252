@@ -62,7 +62,7 @@ sem_t *spaces;
 sem_t *items;
 
 // char *inflated_IDAT_data;
-U8 idat_data; //[height_all*(width*4+1)]
+U8 *idat_data; //[height_all*(width*4+1)]
 
 int main( int argc, char** argv )
 {
@@ -137,9 +137,8 @@ int main( int argc, char** argv )
                 producer(p_shm_recv_buf, buf_size);
             }
             else {
-                // consumer(p_shm_recv_buf, buf_size);
+                consumer(p_shm_recv_buf, buf_size);
             }
-
             break;
         }
     }
@@ -212,7 +211,7 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
                 }
 
                 printf("size at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].size);
-                printf("seq at pindex: %u = %u\n", pindex, p_shm_recv_buf[pindex].seq);
+                printf("buf at pindex: %u = %u\n", pindex, &p_shm_recv_buf[pindex].buf);
                 *counter+=1;
             }
             printf("counter: %u\n",*counter);
@@ -233,38 +232,40 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
         pthread_mutex_lock(&mutex);
         /* read from shared memory here */
         printf("size at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].size);
-        printf("seq at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].seq);
+        // printf("buf33 at cindex: %u = %u\n", cindex, p_shm_recv_buf[cindex].buf[33]);
         if (p_shm_recv_buf[cindex].size != 0) {
             /* SLEEP FOR X TIME */
 
             /* get data from producer */
-            RECV_BUF temp = p_shm_recv_buf[cindex];
-            shm_recv_buf_init(&p_shm_recv_buf[cindex], BUF_SIZE);
-            printf("tempSEQ: %u \n", temp.seq);
+            // RECV_BUF temp = p_shm_recv_buf[cindex];
+            
+            // printf("tempSEQ: %u \n", temp.seq);
 
             /* get idat data uncompressed and store in shared mem */
 
-            int idat_index = 0;
-            int length_all = 0;
+            // int length_all = 0;
             struct chunk * idat;
 
             U32 height = 6;
             U32 width = 400;
             U64 uncompressed_size = height*(width*4+1);
             U8 temp_data[uncompressed_size];
+            int idat_index = p_shm_recv_buf[cindex].seq*uncompressed_size;
 
             /* using our helper function to get chunk information */
-            idat = retrieve_chunk(&temp.buf[33]);
+            // idat = retrieve_chunk(&p_shm_recv_buf[cindex].buf[33]);
 
-            length_all += idat->length;
-            mem_inf(&temp_data[0], &uncompressed_size, idat->p_data, idat->length);
+            // // // length_all += idat->length;
+            // mem_inf(&temp_data[0], &uncompressed_size, idat->p_data, idat->length);
 
-            /* uncompressed data goes into IDAT_data array */
-            memcpy(&idat_data[counter], &temp_data[0], uncompressed_size);
+            // /* uncompressed data goes into IDAT_data array */
+            // memcpy(&idat_data[idat_index], &temp_data[0], uncompressed_size);
 
             /* update the counter to keep track of which value the array is at */
-            counter += uncompressed_size;
 
+            /* reset */
+            int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+            shm_recv_buf_init(&p_shm_recv_buf[cindex], shm_size);
         }
         printf("counter mutex: %u \n",*counter);
         cindex = (cindex+1)%buf_size;
