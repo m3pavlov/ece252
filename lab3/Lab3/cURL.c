@@ -186,7 +186,7 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex
     if( res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
     } else {
-	    // printf("%lu bytes received in memory %p, seq=%d.\n", p_shm_recv_buf_temp->size, p_shm_recv_buf_temp->buf, p_shm_recv_buf_temp->seq);
+	    printf("%lu bytes received in memory %p, seq=%d.\n", p_shm_recv_buf_temp->size, p_shm_recv_buf_temp->buf, p_shm_recv_buf_temp->seq);
     }
 
     // printf("./output_%d_%d.png\n", p_shm_recv_buf_temp->seq, pid);

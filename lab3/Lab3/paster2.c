@@ -140,7 +140,6 @@ int main( int argc, char** argv )
             else {
                 consumer(p_shm_recv_buf, buf_size);
             }
-
             break;
         }
     }
