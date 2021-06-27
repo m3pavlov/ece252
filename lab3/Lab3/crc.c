@@ -66,37 +66,38 @@ struct chunk * retrieve_chunk(char *fp){
     unsigned char length[4] = {0};
     unsigned char crc_array[4] = {0};
 
-    /* copy bytes for length and type into */
-    memcpy(length, &fp[0], 4);
+    //printf("%u, \n", fp[4]);
+    // /* copy bytes for length and type into */
+    // memcpy(length, &fp[0], 4);
 
-    memcpy(c->type, &fp[4], 4);
+    // memcpy(c->type, &fp[4], 4);
 
-    /* initialize length */
-    c->length = 0;
-    for(int i = 0; i < 4; i++){
-        unsigned int sum = 0;
-        sum = length[i]*((int)pow(256, i));
-        c->length = c->length + sum;
-    }
+    // /* initialize length */
+    // c->length = 0;
+    // for(int i = 0; i < 4; i++){
+    //     unsigned int sum = 0;
+    //     sum = length[i]*((int)pow(256, i));
+    //     c->length = c->length + sum;
+    // }
 
-    /* length in correct order (little endian) */
-    c->length = ntohl(c->length);
+    // /* length in correct order (little endian) */
+    // c->length = ntohl(c->length);
 
-    /* copy type, data and crc values into struct chunk */
-    c->p_data = (U8 *)malloc(c->length*sizeof(U8));
+    // /* copy type, data and crc values into struct chunk */
+    // c->p_data = (U8 *)malloc(c->length*sizeof(U8));
 
-    memcpy(c->p_data, &fp[8], c->length);
+    // memcpy(c->p_data, &fp[8], c->length);
 
-    memcpy(crc_array, &fp[8+c->length], 4);
+    // memcpy(crc_array, &fp[8+c->length], 4);
 
-    c->crc = 0;
-    for(int i = 0; i < 4; i++){
-        unsigned int sum = 0;
-        sum = crc_array[i]*((int)pow(256, i));
-        c->crc = c->crc + sum;
-    }
+    // c->crc = 0;
+    // for(int i = 0; i < 4; i++){
+    //     unsigned int sum = 0;
+    //     sum = crc_array[i]*((int)pow(256, i));
+    //     c->crc = c->crc + sum;
+    // }
 
-    c->crc = ntohl(c->crc);
+    // c->crc = ntohl(c->crc);
     
     return c;
 }
