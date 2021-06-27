@@ -36,7 +36,7 @@
 int worker(int n);
 void producer(RECV_BUF *p_shm_recv_buf, int buf_size);
 void consumer(RECV_BUF *p_shm_recv_buf, int buf_size);
-void idat_initialize(RECV_BUF *temp);
+void idat_initialize(RECV_BUF temp);
 void write_chunk_to_file(struct chunk *curr_chunk);
 void catpng ();
 
@@ -59,7 +59,7 @@ int cindex = 0;
 
 RECV_BUF *p_shm_recv_buf;
 int *counter;
-int *length_all;
+U64 *length_all;
 sem_t *spaces;
 sem_t *items;
 
@@ -77,7 +77,7 @@ int main( int argc, char** argv )
 
     int n_consumer = 1;
     int n_producer = 1;
-    int buf_size = 5;
+    int buf_size = 3;
     int num_child = n_consumer + n_producer;
     int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
     int height_all = 6*50;
@@ -87,7 +87,7 @@ int main( int argc, char** argv )
     int shmid_spaces = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     int shmid_items = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
     int shmid_counter = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
-    int shmid_length_all = shmget( IPC_PRIVATE, 32, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
+    int shmid_length_all = shmget( IPC_PRIVATE, sizeof(U64), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR );
     int shmid_idat_data = shmget(IPC_PRIVATE, height_all*(width_all*4+1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
     if ( shmid_buf == -1 || shmid_spaces == -1 || shmid_items == -1 || shmid_counter == -1 || shmid_length_all == -1 || shmid_idat_data == -1) {
@@ -235,7 +235,7 @@ void producer(RECV_BUF *p_shm_recv_buf, int buf_size) {
     }
 }
 
-void idat_initialize(RECV_BUF *temp){
+void idat_initialize(RECV_BUF temp){
 
     
     /* get idat data uncompressed and store in shared mem */
@@ -248,16 +248,19 @@ void idat_initialize(RECV_BUF *temp){
     U8 temp_data[uncompressed_size];
 
     /* using our helper function to get chunk information */
-    idat = retrieve_chunk(&temp->buf[33]);
+    idat = retrieve_chunk(&temp.buf[33]);
 
     *length_all += idat->length;
+    printf("idat length: %u\n", idat->length);
+    printf("total length: %u\n", *length_all);
     mem_inf(&temp_data[0], &uncompressed_size, idat->p_data, idat->length);
 
-    int array_position = temp->seq*uncompressed_size;
+    int array_position = temp.seq*uncompressed_size;
 
     /* uncompressed data goes into IDAT_data array */
     memcpy(&idat_data[array_position], &temp_data[0], uncompressed_size);
 
+    free(idat);
 }
 
 void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
@@ -276,11 +279,17 @@ void consumer(RECV_BUF *p_shm_recv_buf, int buf_size) {
             /* get data from producer */
             RECV_BUF temp = p_shm_recv_buf[cindex];
 
-            printf("tempSEQ: %u \n", sizeof(temp.buf));
+            printf("tempSEQ: %u \n", temp.seq);
 
-            idat_initialize(&temp);
+            unsigned char len[4] = {0};
+            memcpy(len, &temp.buf[33], 4);
 
-            shm_recv_buf_init(&p_shm_recv_buf[cindex], BUF_SIZE);
+            printf("tempbufSIZE: %u%u%u%un", len[0], len[1], len[2], len[3]);
+            // printf("tempSEQ: %u \n", sizeof(temp.buf));
+
+            idat_initialize(temp);
+            int shm_size = sizeof_shm_recv_buf(BUF_SIZE);
+            shm_recv_buf_init(&p_shm_recv_buf[cindex], shm_size);
 
             printf("counter mutex: %u \n", *counter);
         }
@@ -329,7 +338,7 @@ void catpng () {
     printf("%u, %u \n", length_all, array_position);
 
     /* compress data */
-    mem_def(&IDAT_data_all[0], length_all, idat_data, 470694, -1); /* compressing data of all PNG before it goes in IDAT chunk */
+    mem_def(&IDAT_data_all[0], length_all, idat_data, array_position, -1); /* compressing data of all PNG before it goes in IDAT chunk */
 
     // /* initializes length of complete idat and data */
     // idat_all->length = *length_all;

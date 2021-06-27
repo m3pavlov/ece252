@@ -192,7 +192,8 @@ int get_cURL( int image_option, int server, RECV_BUF *p_shm_recv_buf, int pindex
     // printf("./output_%d_%d.png\n", p_shm_recv_buf_temp->seq, pid);
 
     for ( int i = 0; i < p_shm_recv_buf_temp->size; i++){
-        p_shm_recv_buf->buf[i] = p_shm_recv_buf_temp->buf[i];
+        // p_shm_recv_buf->buf[i] = p_shm_recv_buf_temp->buf[i];
+        strcpy(&p_shm_recv_buf->buf[i], &p_shm_recv_buf_temp->buf[i]);
     }
 
     p_shm_recv_buf->size = p_shm_recv_buf_temp->size;
